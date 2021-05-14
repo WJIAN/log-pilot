@@ -30,5 +30,9 @@
   close_removed: true
   clean_removed: true
   close_renamed: false
+  multiline:
+    pattern: '^[0-9][0-9][0-9][0-9]'
+    negate: true
+    match: after
 
 {{end}}

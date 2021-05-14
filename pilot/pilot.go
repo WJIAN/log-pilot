@@ -62,6 +62,7 @@ type Pilot struct {
 	baseDir       string
 	logPrefix     []string
 	createSymlink bool
+	cleaner       *Cleaner
 }
 
 // Run start log pilot
@@ -70,6 +71,9 @@ func Run(templ string, baseDir string) error {
 	if err != nil {
 		panic(err)
 	}
+
+	go p.cleaner.Run()
+
 	return p.watch()
 }
 
@@ -101,6 +105,9 @@ func New(tplStr string, baseDir string) (*Pilot, error) {
 	}
 
 	createSymlink := os.Getenv(ENV_PILOT_CREATE_SYMLINK) == "true"
+
+	cleaner := NewCleaner()
+
 	return &Pilot{
 		client:        client,
 		templ:         templ,
@@ -110,6 +117,7 @@ func New(tplStr string, baseDir string) (*Pilot, error) {
 		piloter:       piloter,
 		logPrefix:     logPrefix,
 		createSymlink: createSymlink,
+		cleaner:       cleaner,
 	}, nil
 }
 
@@ -402,6 +410,9 @@ func (p *Pilot) newContainer(containerJSON *types.ContainerJSON) error {
 		return err
 	}
 
+	//生产日志清理任务
+	p.cleaner.UpdateConfig(id, container, logConfigs)
+
 	p.tryReload()
 	return nil
 }
@@ -438,6 +449,9 @@ func (p *Pilot) delContainer(id string) error {
 		time.AfterFunc(15*time.Minute, clean)
 		return nil
 	}
+
+	//删除日志清理任务
+	p.cleaner.DeleteConfig(id)
 
 	return p.piloter.OnDestroyEvent(id)
 }
